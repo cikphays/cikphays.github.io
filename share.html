@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share Link</title>
+    <!-- Use Tailwind CSS for easy styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+
+    <!-- Main content container for the flat layout -->
+    <div class="max-w-xl mx-auto text-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">Share this Link</h1>
+        <p class="text-lg text-gray-600 mb-8">
+            Click the button below to share the tribeworks website.
+        </p>
+        
+        <!-- The share button -->
+        <button id="shareButton" class="bg-blue-500 text-white font-bold py-3 px-6 rounded-full transition-colors duration-200 ease-in-out hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300">
+            Share Link
+        </button>
+
+        <!-- Container to show the link if the Share API is not available -->
+        <div id="linkDisplay" class="mt-8 hidden">
+            <p class="text-md text-gray-500 mb-2">Copy this link to share:</p>
+            <input id="shareLinkInput" type="text" readonly class="w-full p-2 text-gray-800 bg-transparent border-b-2 border-gray-400 focus:outline-none focus:border-blue-500 cursor-pointer" onclick="this.select()">
+        </div>
+    </div>
+
+    <script>
+        // Get the button element and the new link display elements
+        const shareButton = document.getElementById('shareButton');
+        const linkDisplay = document.getElementById('linkDisplay');
+        const shareLinkInput = document.getElementById('shareLinkInput');
+
+        // Add a click event listener to the button
+        shareButton.addEventListener('click', () => {
+            // Define the data to be shared
+            const shareText = "Individual text about sharing.";
+            const shareLink = "https://www.tribeworks.de";
+            const shareTitle = "Individual title to be set.";
+
+            // Use the Web Share API if supported
+            if (navigator.share) {
+                // The Web Share API is available, use it
+                navigator.share({
+                    title: shareTitle,
+                    text: shareText,
+                    url: shareLink,
+                }).catch(error => {
+                    // Log any errors that occur during sharing
+                    console.error('Error sharing:', error);
+                });
+            } else {
+                alert('functionality not available!');
+            }
+        });
+    </script>
+
+</body>
+</html>
