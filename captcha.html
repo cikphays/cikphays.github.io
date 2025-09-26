@@ -1,46 +1,23 @@
-<head>
-  <title>reCAPTCHA dev: get access</title>
-  <script>
-    let currentScript;
 
-    function loadRecaptcha(siteKey) {
-      // Remove old script if it exists
-      if (currentScript) {
-        currentScript.remove();
-      }
+<html>
+  <head>
+    <title>reCAPTCHA dev: get access</title>
+   
+	<script src="https://www.google.com/recaptcha/enterprise.js?render=6LdMbNopAAAAANxXRwGNbmgWctXFEodWzy1pp2bi"></script>
 
-      // Create new script tag with updated site key
-      currentScript = document.createElement('script');
-      currentScript.src = `https://www.google.com/recaptcha/enterprise.js?render=${siteKey}`;
-      document.head.appendChild(currentScript);
-
-      // Update button attribute
-      const button = document.getElementById("recaptcha-button");
-      button.setAttribute("data-sitekey", siteKey);
-    }
-
-    function onSubmit(token) {
-      document.getElementById("myToken").value = token;
-    }
-
-    function updateSiteKey() {
-      const newKey = document.getElementById("siteKeyInput").value.trim();
-      if (newKey) {
-        loadRecaptcha(newKey);
-      }
-    }
-  </script>
-</head>
-<body>
-  <h3>Enter Site Key:</h3>
-  <input type="text" id="siteKeyInput" placeholder="Enter new site key" style="width: 100%;" />
-  <button onclick="updateSiteKey()">Update Site Key</button>
-
-  <br><br>
-
-  <button id="recaptcha-button" class="g-recaptcha"
+	<script>
+	function onSubmit(token) {
+		document.getElementById("myToken").value = token;
+	}
+	</script>
+  </head>
+  <body>
+    <button class="g-recaptcha"
     data-sitekey="6LdMbNopAAAAANxXRwGNbmgWctXFEodWzy1pp2bi"
-    data-callback="onSubmit"
-   </textarea>
-</body>
+    data-callback='onSubmit'
+    data-action='submit'>
+	Get token
+	</button>
+	<textarea id="myToken" style="height: 50%; width: 100%;" value="token"></textarea>
+  </body>
 </html>
