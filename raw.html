@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AWS SES v2 Raw Email Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input[type="text"], textarea { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        textarea#output-base64 { height: 200px; background-color: #f4f4f4; }
+        button { margin-top: 20px; padding: 10px 15px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .success { color: green; margin-top: 10px; font-weight: bold; }
+        .error { color: red; margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>AWS SES v2 Raw Email Generator with Attachment</h2>
+
+    <div id="input-form">
+        <label for="from">From Email Address (Verified):</label>
+        <input type="text" id="from" value="sender@example.com">
+
+        <label for="to">To Email Address:</label>
+        <input type="text" id="to" value="recipient@example.com">
+
+        <label for="subject">Subject:</label>
+        <input type="text" id="subject" value="Test Email with Attachment">
+
+        <label for="body-text">Email Body (Plain Text):</label>
+        <textarea id="body-text">Hello, please find the attachment below.
+- Tester</textarea>
+
+        <label for="attachment-file">Select Attachment File:</label>
+        <input type="file" id="attachment-file">
+
+        <button onclick="generateRawEmail()">Generate Raw MIME & Base64</button>
+        <p id="status-message"></p>
+    </div>
+
+    <hr>
+
+    <div id="output-area" style="display: none;">
+        <h3>Postman Request Body (`Content.Raw.Data`)</h3>
+        <p>Copy the Base64 string below and paste it as the value for the `Data` property in your Postman JSON body.</p>
+        <textarea id="output-base64" readonly></textarea>
+
+        <h3>Example Postman JSON Body</h3>
+        <pre style="background-color: #eee; padding: 10px; border: 1px solid #ccc;">
+{
+    "Content": {
+        "Raw": {
+            "Data": "..." // PASTE THE ABOVE BASE64 STRING HERE
+        }
+    }
+}
+        </pre>
+    </div>
+
+    <script>
+        // Function to create a unique MIME boundary string
+        function createBoundary() {
+            return `----_=_NextPart_${Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)}`;
+        }
+
+        // Main function to generate the raw email content
+        function generateRawEmail() {
+            const from = document.getElementById('from').value.trim();
+            const to = document.getElementById('to').value.trim();
+            const subject = document.getElementById('subject').value.trim();
+            const bodyText = document.getElementById('body-text').value;
+            const fileInput = document.getElementById('attachment-file');
+            const file = fileInput.files[0];
+            const status = document.getElementById('status-message');
+            const outputBase64Area = document.getElementById('output-base64');
+            const outputArea = document.getElementById('output-area');
+
+            status.className = 'error';
+            status.textContent = '';
+            outputBase64Area.value = '';
+            outputArea.style.display = 'none';
+
+            if (!from || !to || !subject) {
+                status.textContent = 'Please fill in From, To, and Subject fields.';
+                return;
+            }
+
+            if (!file) {
+                status.textContent = 'Please select a file to attach.';
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = function (event) {
+                try {
+                    // 1. Get the Base64 content of the attachment file
+                    // The result contains "data:mime/type;base64," prefix, so we split it off.
+                    const fileBase64Content = event.target.result.split(',')[1];
+                    const filename = file.name;
+                    const fileMimeType = file.type || 'application/octet-stream';
+                    const boundary = createBoundary();
+                    
+                    // 2. Build the Raw MIME Message
+                    let rawEmail = `From: ${from}\r\n`;
+                    rawEmail += `To: ${to}\r\n`;
+                    rawEmail += `Subject: ${subject}\r\n`;
+                    rawEmail += `MIME-Version: 1.0\r\n`;
+                    // Main part is multipart/mixed to hold the text body and the attachment
+                    rawEmail += `Content-Type: multipart/mixed; boundary="${boundary}"\r\n`;
+                    rawEmail += `\r\n`; // Blank line separates headers from body
+                    
+                    // --- First part: Plain Text Body ---
+                    rawEmail += `--${boundary}\r\n`;
+                    rawEmail += `Content-Type: text/plain; charset="UTF-8"\r\n`;
+                    rawEmail += `Content-Transfer-Encoding: 7bit\r\n`;
+                    rawEmail += `\r\n`;
+                    rawEmail += `${bodyText}\r\n`;
+                    rawEmail += `\r\n`;
+                    
+                    // --- Second part: Attachment ---
+                    rawEmail += `--${boundary}\r\n`;
+                    rawEmail += `Content-Type: ${fileMimeType}; name="${filename}"\r\n`;
+                    rawEmail += `Content-Description: ${filename}\r\n`;
+                    rawEmail += `Content-Disposition: attachment; filename="${filename}"\r\n`;
+                    rawEmail += `Content-Transfer-Encoding: base64\r\n`;
+                    rawEmail += `\r\n`;
+                    // Insert the file's base64 content. SES recommends line wrapping for robustness (e.g., at 76 chars)
+                    // We'll wrap it here to ensure compliance, replacing every 76 characters with itself plus a CRLF.
+                    const wrappedBase64 = fileBase64Content.replace(/(.{76})/g, '$1\r\n');
+                    rawEmail += `${wrappedBase64}\r\n`;
+                    
+                    // --- Closing boundary ---
+                    rawEmail += `--${boundary}--\r\n`;
+                    
+                    // 3. Base64 encode the ENTIRE Raw MIME Message
+                    // The SendEmail API with Content.Raw.Data expects the entire MIME message to be base64-encoded.
+                    const finalBase64 = btoa(unescape(encodeURIComponent(rawEmail)));
+
+                    // 4. Display the output
+                    outputBase64Area.value = finalBase64;
+                    outputArea.style.display = 'block';
+                    status.className = 'success';
+                    status.textContent = 'Successfully generated the Base64 Raw Email Data! Scroll down to see the output.';
+
+                } catch (e) {
+                    status.textContent = `Error generating email: ${e.message}`;
+                }
+            };
+            
+            // Read the file as a data URL, which includes the base64 content.
+            reader.readAsDataURL(file);
+        }
+    </script>
+</body>
+</html>
